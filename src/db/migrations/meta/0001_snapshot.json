@@ -1,0 +1,650 @@
+{
+  "id": "1cca0006-682b-4f3f-8d72-98420f54ccfe",
+  "prevId": "65132e61-fb2f-4b25-a031-5ec30b036e80",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.cena_karte": {
+      "name": "cena_karte",
+      "schema": "",
+      "columns": {
+        "cena_karte_id": {
+          "name": "cena_karte_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "iznos": {
+          "name": "iznos",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "datum_vazenja_popusta": {
+          "name": "datum_vazenja_popusta",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region_sedenja_id": {
+          "name": "region_sedenja_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cena_karte_region_sedenja_id_region_sedenja_region_sedenja_id_fk": {
+          "name": "cena_karte_region_sedenja_id_region_sedenja_region_sedenja_id_fk",
+          "tableFrom": "cena_karte",
+          "tableTo": "region_sedenja",
+          "columnsFrom": [
+            "region_sedenja_id"
+          ],
+          "columnsTo": [
+            "region_sedenja_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.drzave": {
+      "name": "drzave",
+      "schema": "",
+      "columns": {
+        "drzava_id": {
+          "name": "drzava_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "naziv": {
+          "name": "naziv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.valute": {
+      "name": "valute",
+      "schema": "",
+      "columns": {
+        "valuta_id": {
+          "name": "valuta_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "kod": {
+          "name": "kod",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "naziv": {
+          "name": "naziv",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kategorije": {
+      "name": "kategorije",
+      "schema": "",
+      "columns": {
+        "kategorija_id": {
+          "name": "kategorija_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "naziv": {
+          "name": "naziv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "opis": {
+          "name": "opis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.lokacije": {
+      "name": "lokacije",
+      "schema": "",
+      "columns": {
+        "lokacija_id": {
+          "name": "lokacija_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "naziv": {
+          "name": "naziv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mesto": {
+          "name": "mesto",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "adresa": {
+          "name": "adresa",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ukupan_kapacitet": {
+          "name": "ukupan_kapacitet",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.koncerti": {
+      "name": "koncerti",
+      "schema": "",
+      "columns": {
+        "koncert_id": {
+          "name": "koncert_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "naziv": {
+          "name": "naziv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "opis": {
+          "name": "opis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "datum_vreme": {
+          "name": "datum_vreme",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kategorija_id": {
+          "name": "kategorija_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lokacija_id": {
+          "name": "lokacija_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "koncerti_kategorija_id_kategorije_kategorija_id_fk": {
+          "name": "koncerti_kategorija_id_kategorije_kategorija_id_fk",
+          "tableFrom": "koncerti",
+          "tableTo": "kategorije",
+          "columnsFrom": [
+            "kategorija_id"
+          ],
+          "columnsTo": [
+            "kategorija_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "koncerti_lokacija_id_lokacije_lokacija_id_fk": {
+          "name": "koncerti_lokacija_id_lokacije_lokacija_id_fk",
+          "tableFrom": "koncerti",
+          "tableTo": "lokacije",
+          "columnsFrom": [
+            "lokacija_id"
+          ],
+          "columnsTo": [
+            "lokacija_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.region_sedenja": {
+      "name": "region_sedenja",
+      "schema": "",
+      "columns": {
+        "region_sedenja_id": {
+          "name": "region_sedenja_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "naziv": {
+          "name": "naziv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kapacitet": {
+          "name": "kapacitet",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "koncert_id": {
+          "name": "koncert_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lokacija_id": {
+          "name": "lokacija_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "region_sedenja_koncert_id_koncerti_koncert_id_fk": {
+          "name": "region_sedenja_koncert_id_koncerti_koncert_id_fk",
+          "tableFrom": "region_sedenja",
+          "tableTo": "koncerti",
+          "columnsFrom": [
+            "koncert_id"
+          ],
+          "columnsTo": [
+            "koncert_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "region_sedenja_lokacija_id_lokacije_lokacija_id_fk": {
+          "name": "region_sedenja_lokacija_id_lokacije_lokacija_id_fk",
+          "tableFrom": "region_sedenja",
+          "tableTo": "lokacije",
+          "columnsFrom": [
+            "lokacija_id"
+          ],
+          "columnsTo": [
+            "lokacija_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.promo_kod": {
+      "name": "promo_kod",
+      "schema": "",
+      "columns": {
+        "promo_kod_id": {
+          "name": "promo_kod_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "kod": {
+          "name": "kod",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kreiran_iz_rezervacije_id": {
+          "name": "kreiran_iz_rezervacije_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "iskoriscen_u_rezervacije_id": {
+          "name": "iskoriscen_u_rezervacije_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "promo_kod_kreiran_iz_rezervacije_id_rezervacije_rezervacija_id_fk": {
+          "name": "promo_kod_kreiran_iz_rezervacije_id_rezervacije_rezervacija_id_fk",
+          "tableFrom": "promo_kod",
+          "tableTo": "rezervacije",
+          "columnsFrom": [
+            "kreiran_iz_rezervacije_id"
+          ],
+          "columnsTo": [
+            "rezervacija_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "promo_kod_iskoriscen_u_rezervacije_id_rezervacije_rezervacija_id_fk": {
+          "name": "promo_kod_iskoriscen_u_rezervacije_id_rezervacije_rezervacija_id_fk",
+          "tableFrom": "promo_kod",
+          "tableTo": "rezervacije",
+          "columnsFrom": [
+            "iskoriscen_u_rezervacije_id"
+          ],
+          "columnsTo": [
+            "rezervacija_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rezervacije": {
+      "name": "rezervacije",
+      "schema": "",
+      "columns": {
+        "rezervacija_id": {
+          "name": "rezervacija_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "datum_kreiranja": {
+          "name": "datum_kreiranja",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "je_aktivna": {
+          "name": "je_aktivna",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sifra": {
+          "name": "sifra",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ime": {
+          "name": "ime",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prezime": {
+          "name": "prezime",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "adresa": {
+          "name": "adresa",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "broj_telefona": {
+          "name": "broj_telefona",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ukupna_cena": {
+          "name": "ukupna_cena",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "koncert_id": {
+          "name": "koncert_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valuta_id": {
+          "name": "valuta_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "drzava_id": {
+          "name": "drzava_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rezervacije_koncert_id_koncerti_koncert_id_fk": {
+          "name": "rezervacije_koncert_id_koncerti_koncert_id_fk",
+          "tableFrom": "rezervacije",
+          "tableTo": "koncerti",
+          "columnsFrom": [
+            "koncert_id"
+          ],
+          "columnsTo": [
+            "koncert_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "rezervacije_valuta_id_valute_valuta_id_fk": {
+          "name": "rezervacije_valuta_id_valute_valuta_id_fk",
+          "tableFrom": "rezervacije",
+          "tableTo": "valute",
+          "columnsFrom": [
+            "valuta_id"
+          ],
+          "columnsTo": [
+            "valuta_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "rezervacije_drzava_id_drzave_drzava_id_fk": {
+          "name": "rezervacije_drzava_id_drzave_drzava_id_fk",
+          "tableFrom": "rezervacije",
+          "tableTo": "drzave",
+          "columnsFrom": [
+            "drzava_id"
+          ],
+          "columnsTo": [
+            "drzava_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rezervisana_mesta": {
+      "name": "rezervisana_mesta",
+      "schema": "",
+      "columns": {
+        "rezervisano_mesto_id": {
+          "name": "rezervisano_mesto_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "rezervacija_id": {
+          "name": "rezervacija_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mesto_id": {
+          "name": "mesto_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rezervisana_mesta_rezervacija_id_rezervacije_rezervacija_id_fk": {
+          "name": "rezervisana_mesta_rezervacija_id_rezervacije_rezervacija_id_fk",
+          "tableFrom": "rezervisana_mesta",
+          "tableTo": "rezervacije",
+          "columnsFrom": [
+            "rezervacija_id"
+          ],
+          "columnsTo": [
+            "rezervacija_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "rezervisana_mesta_mesto_id_mesta_mesto_id_fk": {
+          "name": "rezervisana_mesta_mesto_id_mesta_mesto_id_fk",
+          "tableFrom": "rezervisana_mesta",
+          "tableTo": "mesta",
+          "columnsFrom": [
+            "mesto_id"
+          ],
+          "columnsTo": [
+            "mesto_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mesta": {
+      "name": "mesta",
+      "schema": "",
+      "columns": {
+        "mesto_id": {
+          "name": "mesto_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "oznaka": {
+          "name": "oznaka",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region_sedenja_id": {
+          "name": "region_sedenja_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mesta_region_sedenja_id_region_sedenja_region_sedenja_id_fk": {
+          "name": "mesta_region_sedenja_id_region_sedenja_region_sedenja_id_fk",
+          "tableFrom": "mesta",
+          "tableTo": "region_sedenja",
+          "columnsFrom": [
+            "region_sedenja_id"
+          ],
+          "columnsTo": [
+            "region_sedenja_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
