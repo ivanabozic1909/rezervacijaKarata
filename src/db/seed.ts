@@ -15,79 +15,73 @@ async function seed() {
     console.log("🌱 Seeding database...");
 
     // ======================
-    // DRZAVA
+    // DRŽAVE
     // ======================
-    const [drzava] = await db
-      .insert(drzave)
-      .values({ naziv: "Srbija" })
-      .returning();
+    const insertedDrzave = await db.insert(drzave).values([
+      { naziv: "Srbija" },
+      { naziv: "Hrvatska" },
+      { naziv: "Bosna i Hercegovina" },
+    ]).returning();
+
+    const srbija = insertedDrzave[0];
 
     // ======================
-    // VALUTA
+    // VALUTE
     // ======================
-    const [valuta] = await db
-      .insert(valute)
-      .values({ kod: "RSD", naziv: "Dinar" })
-      .returning();
+    const insertedValute = await db.insert(valute).values([
+      { kod: "RSD", naziv: "Dinar" },
+      { kod: "EUR", naziv: "Evro" },
+      { kod: "USD", naziv: "Dolar" },
+    ]).returning();
+
+    const rsd = insertedValute[0];
 
     // ======================
     // KATEGORIJA
     // ======================
-    const [kategorija] = await db
-      .insert(kategorije)
-      .values({
-        naziv: "Pop",
-        opis: "Pop muzika",
-      })
-      .returning();
+    const [kategorija] = await db.insert(kategorije).values({
+      naziv: "Pop",
+      opis: "Pop muzika",
+    }).returning();
 
     // ======================
     // LOKACIJA
     // ======================
-    const [lokacija] = await db
-      .insert(lokacije)
-      .values({
-        naziv: "Štark Arena",
-        mesto: "Beograd",
-        adresa: "Bulevar Arsenija Čarnojevića 58",
-        ukupanKapacitet: 20000,
-      })
-      .returning();
+    const [lokacija] = await db.insert(lokacije).values({
+      naziv: "Štark Arena",
+      mesto: "Beograd",
+      adresa: "Bulevar Arsenija Čarnojevića 58",
+      ukupanKapacitet: 20000,
+    }).returning();
 
     // ======================
     // KONCERT
     // ======================
-    const [koncert] = await db
-      .insert(koncerti)
-      .values({
-        naziv: "Veliki Spektakl 2026",
-        opis: "Najveći koncert godine",
-        datumVreme: new Date("2026-06-15T20:00:00"),
-        kategorijaId: kategorija.kategorijaId,
-        lokacijaId: lokacija.lokacijaId,
-      })
-      .returning();
+    const [koncert] = await db.insert(koncerti).values({
+      naziv: "Veliki Spektakl 2026",
+      opis: "Najveći koncert godine",
+      datumVreme: new Date("2026-06-15T20:00:00"),
+      kategorijaId: kategorija.kategorijaId,
+      lokacijaId: lokacija.lokacijaId,
+    }).returning();
 
     // ======================
     // REGIONI
     // ======================
-    const insertedRegioni = await db
-      .insert(regionSedenja)
-      .values([
-        {
-          naziv: "VIP",
-          kapacitet: 20,
-          koncertId: koncert.koncertId,
-          lokacijaId: lokacija.lokacijaId,
-        },
-        {
-          naziv: "Parter",
-          kapacitet: 30,
-          koncertId: koncert.koncertId,
-          lokacijaId: lokacija.lokacijaId,
-        },
-      ])
-      .returning();
+    const insertedRegioni = await db.insert(regionSedenja).values([
+      {
+        naziv: "VIP",
+        kapacitet: 20,
+        koncertId: koncert.koncertId,
+        lokacijaId: lokacija.lokacijaId,
+      },
+      {
+        naziv: "Parter",
+        kapacitet: 30,
+        koncertId: koncert.koncertId,
+        lokacijaId: lokacija.lokacijaId,
+      },
+    ]).returning();
 
     const vipRegion = insertedRegioni[0];
     const parterRegion = insertedRegioni[1];
@@ -111,22 +105,15 @@ async function seed() {
     // ======================
     // GENERISANJE MESTA
     // ======================
+    const vipMesta = Array.from({ length: 20 }, (_, i) => ({
+      oznaka: `VIP-${i + 1}`,
+      regionSedenjaId: vipRegion.regionSedenjaId,
+    }));
 
-    const vipMesta = Array.from(
-      { length: vipRegion.kapacitet },
-      (_, i) => ({
-        oznaka: `VIP-${i + 1}`,
-        regionSedenjaId: vipRegion.regionSedenjaId,
-      })
-    );
-
-    const parterMesta = Array.from(
-      { length: parterRegion.kapacitet },
-      (_, i) => ({
-        oznaka: `P-${i + 1}`,
-        regionSedenjaId: parterRegion.regionSedenjaId,
-      })
-    );
+    const parterMesta = Array.from({ length: 30 }, (_, i) => ({
+      oznaka: `P-${i + 1}`,
+      regionSedenjaId: parterRegion.regionSedenjaId,
+    }));
 
     await db.insert(mesta).values([...vipMesta, ...parterMesta]);
 

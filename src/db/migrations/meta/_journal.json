@@ -15,6 +15,13 @@
       "when": 1772062669120,
       "tag": "0001_elite_maestro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772140487990,
+      "tag": "0002_medical_the_initiative",
+      "breakpoints": true
     }
   ]
 }

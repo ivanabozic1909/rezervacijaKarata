@@ -8,8 +8,8 @@ import { rezervisanaMesta } from "./rezervisanoMesto";
 
 export const rezervacije = pgTable("rezervacije", {
   rezervacijaId: serial("rezervacija_id").primaryKey(),
-  datumKreiranja: timestamp("datum_kreiranja").notNull(),
-  jeAktivna: boolean("je_aktivna").notNull(),
+  datumKreiranja: timestamp("datum_kreiranja").defaultNow().notNull(),
+  status: text("status").notNull(),
   sifra: text("sifra").notNull(),
 
   ime: text("ime").notNull(),
@@ -17,6 +17,8 @@ export const rezervacije = pgTable("rezervacije", {
   email: text("email").notNull(),
   adresa: text("adresa"),
   brojTelefona: text("broj_telefona"),
+  postanskiBroj: text("postanski_broj").notNull(),
+  mesto: text("mesto").notNull(),
 
   ukupnaCena: numeric("ukupna_cena").notNull(),
 

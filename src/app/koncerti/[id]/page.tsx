@@ -11,15 +11,38 @@ async function getKoncert(id: string) {
   return res.json();
 }
 
+async function getValute() {
+  const res = await fetch(
+    `http://localhost:3000/api/valute`,
+    { cache: "no-store" }
+  );
+
+  if (!res.ok) return [];
+
+  return res.json();
+}
+
+async function getDrzave() {
+  const res = await fetch(
+    `http://localhost:3000/api/drzave`,
+    { cache: "no-store" }
+  );
+
+  if (!res.ok) return [];
+
+  return res.json();
+}
+
 export default async function KoncertDetalj({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // ✅ NEXT 16 – params je Promise
   const { id } = await params;
 
   const koncert = await getKoncert(id);
+  const valute = await getValute();
+  const drzave = await getDrzave();
 
   if (!koncert) {
     return (
@@ -41,14 +64,12 @@ export default async function KoncertDetalj({
 
       <div className="mb-10 text-gray-500 space-y-1">
         <p>📍 {koncert.lokacija?.naziv}</p>
-
         <p>
           📅{" "}
           {new Date(
             koncert.datumVreme
           ).toLocaleDateString("sr-RS")}
         </p>
-
         <p className="text-blue-600">
           {koncert.kategorija?.naziv}
         </p>
@@ -79,10 +100,11 @@ export default async function KoncertDetalj({
         ))}
       </div>
 
-      {/* ✅ Forma za rezervaciju */}
       <ReservationForm
         koncertId={koncert.koncertId}
         regioni={koncert.regioniSedenja}
+        valute={valute}
+        drzave={drzave}
       />
     </div>
   );

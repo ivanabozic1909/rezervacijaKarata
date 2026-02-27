@@ -1,4 +1,5 @@
 "use client";
+
 export default function Navbar() {
   return (
     <nav className="bg-white shadow-md px-6 py-4 flex justify-between items-center">
@@ -7,15 +8,9 @@ export default function Navbar() {
       </h1>
 
       <div className="space-x-6">
-        <a href="/" className="hover:text-blue-600">
-          Početna
-        </a>
-        <a href="/rezervacije" className="hover:text-blue-600">
-          Rezervacija
-        </a>
-        <a href="/login" className="hover:text-blue-600">
-          Login
-        </a>
+        <a href="/admin">Admin</a>
+<a href="/izmena">Izmena karte</a>
+<a href="/otkazivanje">Otkazivanje</a>
       </div>
     </nav>
   );

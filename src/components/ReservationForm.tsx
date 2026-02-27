@@ -5,6 +5,8 @@ import { useState, useMemo } from "react";
 export default function ReservationForm({
   koncertId,
   regioni,
+  valute,
+  drzave,
 }: any) {
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [message, setMessage] = useState("");
@@ -13,10 +15,12 @@ export default function ReservationForm({
     ime: "",
     prezime: "",
     email: "",
+    potvrdaEmail: "",
     adresa: "",
-    brojTelefona: "",
-    drzavaId: 1,
-    valutaId: 1,
+    postanskiBroj: "",
+    mesto: "",
+    drzavaId: "",
+    valutaId: "",
     promoKod: "",
   });
 
@@ -30,45 +34,25 @@ export default function ReservationForm({
     );
   }
 
-  // ==========================
-  // 💰 IZRAČUN UKUPNE CENE
-  // ==========================
-
-  const ukupnaCena = useMemo(() => {
+  // 🔎 Procena cene (samo preview)
+  const procenaCene = useMemo(() => {
     let total = 0;
-    const sada = new Date();
 
     regioni.forEach((region: any) => {
       const cenaObj = region.ceneKarata?.[0];
       if (!cenaObj) return;
 
       const osnovnaCena = Number(cenaObj.iznos);
-      const datumPopusta = cenaObj.datumVazenjaPopusta;
 
       region.mesta.forEach((mesto: any) => {
         if (selectedSeats.includes(mesto.mestoId)) {
-          let finalCena = osnovnaCena;
-
-          // 10% popust do datuma
-          if (
-            datumPopusta &&
-            sada <= new Date(datumPopusta)
-          ) {
-            finalCena = finalCena * 0.9;
-          }
-
-          total += finalCena;
+          total += osnovnaCena;
         }
       });
     });
 
-    // 5% promo preview
-    if (form.promoKod.trim() !== "") {
-      total = total * 0.95;
-    }
-
     return total.toFixed(2);
-  }, [selectedSeats, form.promoKod, regioni]);
+  }, [selectedSeats, regioni]);
 
   async function handleSubmit(e: any) {
     e.preventDefault();
@@ -78,25 +62,60 @@ export default function ReservationForm({
       return;
     }
 
+    if (form.email !== form.potvrdaEmail) {
+      setMessage("Email adrese se ne poklapaju.");
+      return;
+    }
+
+    if (!form.drzavaId || !form.valutaId) {
+      setMessage("Morate izabrati državu i valutu.");
+      return;
+    }
+
     const res = await fetch("/api/rezervacije", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         koncertId,
-        ...form,
+        ime: form.ime,
+        prezime: form.prezime,
+        email: form.email,
+        adresa: form.adresa,
+        postanskiBroj: form.postanskiBroj,
+        mesto: form.mesto,
+        drzavaId: Number(form.drzavaId),
+        valutaId: Number(form.valutaId),
+        promoKod: form.promoKod,
         mesta: selectedSeats,
       }),
     });
 
     const data = await res.json();
+if (res.ok) {
+  setMessage("Rezervacija se obrađuje...");
 
-    if (res.ok) {
-      setMessage(
-        `Uspešno! Cena: ${data.cena} | Šifra: ${data.sifra}`
-      );
-      setSelectedSeats([]);
-    } else {
-      setMessage(data.message);
+  const interval = setInterval(async () => {
+    const response = await fetch(
+      `/api/rezervacije/status?email=${form.email}`
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+
+      if (data.status === "AKTIVNA") {
+        clearInterval(interval);
+
+        setMessage(`
+🎟 Rezervacija uspešna!
+Šifra: ${data.sifra}
+Ukupna cena: ${data.ukupnaCena} ${data.valutaKod}
+🎁 Promo kod za sledeću kupovinu: ${data.generisaniPromoKod}
+        `);
+      }
+    }
+  }, 2000);
+} else {
+      setMessage(data.message || "Došlo je do greške.");
     }
   }
 
@@ -105,36 +124,24 @@ export default function ReservationForm({
       onSubmit={handleSubmit}
       className="bg-gray-100 p-8 rounded-2xl space-y-6 mt-16"
     >
-      <h2 className="text-2xl font-bold">
-        Izaberite mesta
-      </h2>
+      <h2 className="text-2xl font-bold">Rezervacija karata</h2>
 
       {/* REGIONI */}
       {regioni.map((region: any) => (
         <div key={region.regionSedenjaId} className="mb-8">
-          <h3 className="font-bold mb-4 text-lg">
-            {region.naziv}
-          </h3>
+          <h3 className="font-bold mb-4 text-lg">{region.naziv}</h3>
 
           <div className="grid grid-cols-6 gap-2">
             {region.mesta.map((mesto: any) => {
-              const zauzeto =
-                mesto.rezervacije.length > 0;
-
-              const selektovano =
-                selectedSeats.includes(mesto.mestoId);
+              const zauzeto = mesto.rezervacije.length > 0;
+              const selektovano = selectedSeats.includes(mesto.mestoId);
 
               return (
                 <button
                   type="button"
                   key={mesto.mestoId}
                   disabled={zauzeto}
-                  onClick={() =>
-                    toggleSeat(
-                      mesto.mestoId,
-                      zauzeto
-                    )
-                  }
+                  onClick={() => toggleSeat(mesto.mestoId, zauzeto)}
                   className={`
                     p-2 rounded text-sm transition
                     ${
@@ -154,34 +161,77 @@ export default function ReservationForm({
         </div>
       ))}
 
-      {/* 💰 PRIKAZ UKUPNE CENE */}
+      {/* PROCENA CENE */}
       <div className="bg-white p-4 rounded-lg shadow">
         <p className="text-lg font-semibold">
-          Ukupna cena:{" "}
+          Procena cene:{" "}
           <span className="text-green-600">
-            {ukupnaCena} RSD
+            {procenaCene} RSD
           </span>
+        </p>
+        <p className="text-sm text-gray-500">
+          Konačna cena se obračunava u backend sistemu.
         </p>
       </div>
 
-      {/* PODACI */}
-      {["ime", "prezime", "email", "adresa", "brojTelefona"].map(
-        (field) => (
-          <input
-            key={field}
-            placeholder={field}
-            className="w-full p-3 rounded-lg border"
-            value={(form as any)[field]}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                [field]: e.target.value,
-              })
-            }
-            required
-          />
-        )
-      )}
+      {/* OSNOVNI PODACI */}
+      {[
+        { name: "ime", placeholder: "Ime" },
+        { name: "prezime", placeholder: "Prezime" },
+        { name: "email", placeholder: "Email" },
+        { name: "potvrdaEmail", placeholder: "Potvrda email adrese" },
+        { name: "adresa", placeholder: "Adresa" },
+        { name: "postanskiBroj", placeholder: "Poštanski broj" },
+        { name: "mesto", placeholder: "Mesto" },
+      ].map((field) => (
+        <input
+          key={field.name}
+          placeholder={field.placeholder}
+          className="w-full p-3 rounded-lg border"
+          value={(form as any)[field.name]}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              [field.name]: e.target.value,
+            })
+          }
+          required
+        />
+      ))}
+
+      {/* DRŽAVA */}
+      <select
+        className="w-full p-3 rounded-lg border"
+        value={form.drzavaId}
+        onChange={(e) =>
+          setForm({ ...form, drzavaId: e.target.value })
+        }
+        required
+      >
+        <option value="">Izaberite državu</option>
+        {drzave?.map((drzava: any) => (
+          <option key={drzava.drzavaId} value={drzava.drzavaId}>
+            {drzava.naziv}
+          </option>
+        ))}
+      </select>
+
+      {/* VALUTA */}
+      <select
+        className="w-full p-3 rounded-lg border"
+        value={form.valutaId}
+        onChange={(e) =>
+          setForm({ ...form, valutaId: e.target.value })
+        }
+        required
+      >
+        <option value="">Izaberite valutu</option>
+        {valute?.map((valuta: any) => (
+          <option key={valuta.valutaId} value={valuta.valutaId}>
+            {valuta.kod} - {valuta.naziv}
+          </option>
+        ))}
+      </select>
 
       {/* PROMO */}
       <input
@@ -189,10 +239,7 @@ export default function ReservationForm({
         className="w-full p-3 rounded-lg border"
         value={form.promoKod}
         onChange={(e) =>
-          setForm({
-            ...form,
-            promoKod: e.target.value,
-          })
+          setForm({ ...form, promoKod: e.target.value })
         }
       />
 
@@ -200,7 +247,7 @@ export default function ReservationForm({
         type="submit"
         className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800"
       >
-        Potvrdi rezervaciju
+        Pošalji rezervaciju
       </button>
 
       {message && (
