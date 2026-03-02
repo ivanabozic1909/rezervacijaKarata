@@ -70,6 +70,20 @@ async function startWorker() {
     try {
       const data = JSON.parse(msg.content.toString());
 
+      if (data.event === "OTKAZANA_KARTA") {
+        console.log(`
+------------------------------------
+❌ OBAVEŠTENJE O OTKAZIVANJU (Arhitektura C)
+Šifra: ${data.sifra}
+Email: ${data.email}
+Vreme: ${data.vreme}
+------------------------------------
+        `);
+        channel.ack(msg);
+        return;
+      }
+      // KRAJ UBACIVANJA
+
       const {
         koncertId,
         ime,
@@ -203,22 +217,22 @@ async function startWorker() {
       // 6️⃣ Update promo (ako korišćen)
       // ==========================
 
-     if (promoKod) {
-  const promo = await db.query.promoKodovi.findFirst({
-    where: eq(promoKodovi.kod, promoKod),
-  });
+      if (promoKod) {
+        const promo = await db.query.promoKodovi.findFirst({
+          where: eq(promoKodovi.kod, promoKod),
+        });
 
-  if (promo && promo.status === "AKTIVAN") {
-    await db
-      .update(promoKodovi)
-      .set({
-        status: "ISKORISCEN",
-        iskoriscenURezervacijiId:
-          novaRezervacija.rezervacijaId,
-      })
-      .where(eq(promoKodovi.kod, promoKod));
-  }
-}
+        if (promo && promo.status === "AKTIVAN") {
+          await db
+            .update(promoKodovi)
+            .set({
+              status: "ISKORISCEN",
+              iskoriscenURezervacijiId:
+                novaRezervacija.rezervacijaId,
+            })
+            .where(eq(promoKodovi.kod, promoKod));
+        }
+      }
 
       // ==========================
       // 7️⃣ Novi promo kod

@@ -1,34 +1,36 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { rezervacije } from "@/db/schema/rezervacija";
-import { rezervisanaMesta } from "@/db/schema/rezervisanoMesto";
-import { eq } from "drizzle-orm";
+import { promoKodovi } from "@/db/schema/promoKod";
+import { eq, and } from "drizzle-orm";
+import { publishEvent } from "@/queue/publisher"; // Uvezi novu funkciju
 
-export async function DELETE(req: Request) {
+export async function PATCH(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const sifra = searchParams.get("sifra");
+    const { sifra, email } = await req.json();
 
-    if (!sifra) {
-      return NextResponse.json({ message: "Morate uneti šifru." }, { status: 400 });
-    }
+    const [rez] = await db
+      .select()
+      .from(rezervacije)
+      .where(and(eq(rezervacije.sifra, sifra), eq(rezervacije.email, email)));
 
-    // 1. Nađi rezervaciju po šifri
-    const [rez] = await db.select().from(rezervacije).where(eq(rezervacije.sifra, sifra));
+    if (!rez) return NextResponse.json({ message: "Rezervacija nije nađena" }, { status: 404 });
 
-    if (!rez) {
-      return NextResponse.json({ message: "Rezervacija sa tom šifrom ne postoji." }, { status: 404 });
-    }
+    await db.transaction(async (tx) => {
+      await tx.update(rezervacije).set({ status: "OTKAZANO" }).where(eq(rezervacije.rezervacijaId, rez.rezervacijaId));
+      await tx.update(promoKodovi).set({ status: "Neaktivan" }).where(eq(promoKodovi.kreiranIzRezervacijeId, rez.rezervacijaId));
+    });
 
-    // 2. Obriši povezana mesta
-    await db.delete(rezervisanaMesta).where(eq(rezervisanaMesta.rezervacijaId, rez.rezervacijaId));
+    // POZIV PUBLISHERA: Šaljemo na "rezervacije" queue da bi tvoj worker to video
+    await publishEvent("rezervacije", {
+      event: "OTKAZANA_KARTA",
+      sifra: rez.sifra,
+      email: rez.email,
+      vreme: new Date().toISOString()
+    });
 
-    // 3. Obriši samu rezervaciju
-    await db.delete(rezervacije).where(eq(rezervacije.rezervacijaId, rez.rezervacijaId));
-
-    return NextResponse.json({ message: "Uspešno otkazano." });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Greška pri otkazivanju." }, { status: 500 });
+    return NextResponse.json({ message: "Rezervacija uspešno otkazana." });
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
