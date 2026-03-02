@@ -14,8 +14,7 @@ export const regionSedenja = pgTable("region_sedenja", {
   kapacitet: integer("kapacitet").notNull(),
 
   koncertId: integer("koncert_id")
-    .references(() => koncerti.koncertId)
-    .notNull(),
+    .references(() => koncerti.koncertId),
 
   lokacijaId: integer("lokacija_id")
     .references(() => lokacije.lokacijaId)
