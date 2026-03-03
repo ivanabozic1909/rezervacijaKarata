@@ -22,12 +22,12 @@ export async function PATCH(req: Request) {
     });
 
     // POZIV PUBLISHERA: Šaljemo na "rezervacije" queue da bi tvoj worker to video
-    await publishEvent("rezervacije", {
-      event: "OTKAZANA_KARTA",
-      sifra: rez.sifra,
-      email: rez.email,
-      vreme: new Date().toISOString()
-    });
+   await publishEvent({
+  event: "TICKET_CANCELLED",
+  sifra: rez.sifra,
+  email: rez.email,
+  vreme: new Date().toISOString()
+});
 
     return NextResponse.json({ message: "Rezervacija uspešno otkazana." });
   } catch (error: any) {

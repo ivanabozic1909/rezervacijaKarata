@@ -1,46 +1,56 @@
 import { db } from "@/db";
-import { koncerti } from "@/db/schema/koncert";
-import { lokacije } from "@/db/schema/lokacija";
-import { kategorije } from "@/db/schema/kategorija";
-import { eq } from "drizzle-orm";
 import Hero from "@/components/Hero";
 import ConcertGrid from "@/components/ConcertGrid";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   try {
-    // Ručno spajamo tabele da bismo izbegli "lateral join" grešku
-    const podaci = await db
-      .select({
-        koncertId: koncerti.koncertId,
-        naziv: koncerti.naziv,
-        opis: koncerti.opis,
-        datumVreme: koncerti.datumVreme,
-        // Mapiramo lokaciju i kategoriju onako kako ConcertCard očekuje
-        lokacija: {
-          naziv: lokacije.naziv,
-          mesto: lokacije.mesto,
-        },
-        kategorija: {
-          naziv: kategorije.naziv,
-        },
-      })
-      .from(koncerti)
-      .leftJoin(lokacije, eq(koncerti.lokacijaId, lokacije.lokacijaId))
-      .leftJoin(kategorije, eq(koncerti.kategorijaId, kategorije.kategorijaId));
+    const data = await db.query.koncerti.findMany({
+      with: {
+        kategorija: true,
+        lokacija: true,
+      },
+    });
+
+    // 🔥 Grupisanje po kategoriji
+    const grupisani = data.reduce((acc: any, koncert: any) => {
+      const nazivKategorije =
+        koncert.kategorija?.naziv || "Ostalo";
+
+      if (!acc[nazivKategorije]) {
+        acc[nazivKategorije] = [];
+      }
+
+      acc[nazivKategorije].push(koncert);
+      return acc;
+    }, {});
 
     return (
       <main>
         <Hero />
-        <div className="max-w-6xl mx-auto px-6 py-12">
-          <h2 className="text-3xl font-bold mb-8">Dostupni koncerti</h2>
-          <ConcertGrid koncerti={podaci} />
+
+        <div className="max-w-6xl mx-auto px-6 py-12 space-y-16">
+          {Object.entries(grupisani).map(
+            ([kategorija, koncerti]: any) => (
+              <div key={kategorija}>
+                <h2 className="text-3xl font-bold mb-8">
+                  {kategorija}
+                </h2>
+
+                <ConcertGrid koncerti={koncerti} />
+              </div>
+            )
+          )}
         </div>
       </main>
     );
   } catch (error) {
-    console.error("Baza podataka nije dostupna:", error);
-    return <div className="p-20 text-center">Greška pri učitavanju koncerata. Proverite bazu.</div>;
+    console.error("Baza nije dostupna:", error);
+    return (
+      <div className="p-20 text-center">
+        Greška pri učitavanju koncerata. Proverite bazu.
+      </div>
+    );
   }
 }

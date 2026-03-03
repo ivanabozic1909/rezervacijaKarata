@@ -10,6 +10,7 @@ export default function ReservationForm({
 }: any) {
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     ime: "",
@@ -25,7 +26,7 @@ export default function ReservationForm({
   });
 
   function toggleSeat(mestoId: number, zauzeto: boolean) {
-    if (zauzeto) return;
+    if (zauzeto || isSubmitting) return;
 
     setSelectedSeats((prev) =>
       prev.includes(mestoId)
@@ -34,7 +35,6 @@ export default function ReservationForm({
     );
   }
 
-  // 🔎 Procena cene (samo preview)
   const procenaCene = useMemo(() => {
     let total = 0;
 
@@ -72,50 +72,60 @@ export default function ReservationForm({
       return;
     }
 
-    const res = await fetch("/api/rezervacije", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        koncertId,
-        ime: form.ime,
-        prezime: form.prezime,
-        email: form.email,
-        adresa: form.adresa,
-        postanskiBroj: form.postanskiBroj,
-        mesto: form.mesto,
-        drzavaId: Number(form.drzavaId),
-        valutaId: Number(form.valutaId),
-        promoKod: form.promoKod,
-        mesta: selectedSeats,
-      }),
-    });
+    setIsSubmitting(true);
+    setMessage("Rezervacija se obrađuje...");
 
-    const data = await res.json();
-if (res.ok) {
-  setMessage("Rezervacija se obrađuje...");
+    try {
+      const res = await fetch("/api/rezervacije", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          koncertId,
+          ime: form.ime,
+          prezime: form.prezime,
+          email: form.email,
+          adresa: form.adresa,
+          postanskiBroj: form.postanskiBroj,
+          mesto: form.mesto,
+          drzavaId: Number(form.drzavaId),
+          valutaId: Number(form.valutaId),
+          promoKod: form.promoKod,
+          mesta: selectedSeats,
+        }),
+      });
 
-  const interval = setInterval(async () => {
-    const response = await fetch(
-      `/api/rezervacije/status?email=${form.email}`
-    );
+      const data = await res.json();
 
-    if (response.ok) {
-      const data = await response.json();
+      if (!res.ok) {
+        setMessage(data.message || "Došlo je do greške.");
+        setIsSubmitting(false);
+        return;
+      }
 
-      if (data.status === "AKTIVNA") {
-        clearInterval(interval);
+      const interval = setInterval(async () => {
+        const response = await fetch(
+          `/api/rezervacije/status?email=${form.email}`
+        );
 
-        setMessage(`
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.status === "AKTIVNA") {
+            clearInterval(interval);
+
+            setMessage(`
 🎟 Rezervacija uspešna!
 Šifra: ${data.sifra}
 Ukupna cena: ${data.ukupnaCena} ${data.valutaKod}
-🎁 Promo kod za sledeću kupovinu: ${data.generisaniPromoKod}
-        `);
-      }
-    }
-  }, 2000);
-} else {
-      setMessage(data.message || "Došlo je do greške.");
+🎁 Promo kod: ${data.generisaniPromoKod}
+            `);
+          }
+        }
+      }, 2000);
+
+    } catch (error) {
+      setMessage("Greška pri slanju zahteva.");
+      setIsSubmitting(false);
     }
   }
 
@@ -127,39 +137,51 @@ Ukupna cena: ${data.ukupnaCena} ${data.valutaKod}
       <h2 className="text-2xl font-bold">Rezervacija karata</h2>
 
       {/* REGIONI */}
-      {regioni.map((region: any) => (
-        <div key={region.regionSedenjaId} className="mb-8">
-          <h3 className="font-bold mb-4 text-lg">{region.naziv}</h3>
+      {Array.isArray(regioni) &&
+        regioni.map((region: any) => (
+          <div key={region.regionSedenjaId} className="mb-8">
+            <h3 className="font-bold mb-4 text-lg">
+              {region.naziv}
+            </h3>
 
-          <div className="grid grid-cols-6 gap-2">
-            {region.mesta.map((mesto: any) => {
-              const zauzeto = mesto.rezervacije.length > 0;
-              const selektovano = selectedSeats.includes(mesto.mestoId);
+            <div className="grid grid-cols-6 gap-2">
+              {Array.isArray(region.mesta) &&
+                region.mesta.map((mesto: any) => {
+                  const rezervacije = Array.isArray(mesto.rezervacije)
+                    ? mesto.rezervacije
+                    : [];
 
-              return (
-                <button
-                  type="button"
-                  key={mesto.mestoId}
-                  disabled={zauzeto}
-                  onClick={() => toggleSeat(mesto.mestoId, zauzeto)}
-                  className={`
-                    p-2 rounded text-sm transition
-                    ${
-                      zauzeto
-                        ? "bg-red-500 cursor-not-allowed text-white"
-                        : selektovano
-                        ? "bg-blue-600 text-white"
-                        : "bg-green-500 hover:bg-green-600 text-white"
-                    }
-                  `}
-                >
-                  {mesto.oznaka}
-                </button>
-              );
-            })}
+                  const zauzeto = rezervacije.length > 0;
+                  const selektovano = selectedSeats.includes(
+                    mesto.mestoId
+                  );
+
+                  return (
+                    <button
+                      type="button"
+                      key={mesto.mestoId}
+                      disabled={zauzeto || isSubmitting}
+                      onClick={() =>
+                        toggleSeat(mesto.mestoId, zauzeto)
+                      }
+                      className={`
+                        p-2 rounded text-sm transition
+                        ${
+                          zauzeto
+                            ? "bg-red-500 cursor-not-allowed text-white"
+                            : selektovano
+                            ? "bg-blue-600 text-white"
+                            : "bg-green-500 hover:bg-green-600 text-white"
+                        }
+                      `}
+                    >
+                      {mesto.oznaka}
+                    </button>
+                  );
+                })}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
 
       {/* PROCENA CENE */}
       <div className="bg-white p-4 rounded-lg shadow">
@@ -169,12 +191,9 @@ Ukupna cena: ${data.ukupnaCena} ${data.valutaKod}
             {procenaCene} RSD
           </span>
         </p>
-        <p className="text-sm text-gray-500">
-          Konačna cena se obračunava u backend sistemu.
-        </p>
       </div>
 
-      {/* OSNOVNI PODACI */}
+      {/* INPUTI */}
       {[
         { name: "ime", placeholder: "Ime" },
         { name: "prezime", placeholder: "Prezime" },
@@ -195,17 +214,18 @@ Ukupna cena: ${data.ukupnaCena} ${data.valutaKod}
               [field.name]: e.target.value,
             })
           }
+          disabled={isSubmitting}
           required
         />
       ))}
 
-      {/* DRŽAVA */}
       <select
         className="w-full p-3 rounded-lg border"
         value={form.drzavaId}
         onChange={(e) =>
           setForm({ ...form, drzavaId: e.target.value })
         }
+        disabled={isSubmitting}
         required
       >
         <option value="">Izaberite državu</option>
@@ -216,13 +236,13 @@ Ukupna cena: ${data.ukupnaCena} ${data.valutaKod}
         ))}
       </select>
 
-      {/* VALUTA */}
       <select
         className="w-full p-3 rounded-lg border"
         value={form.valutaId}
         onChange={(e) =>
           setForm({ ...form, valutaId: e.target.value })
         }
+        disabled={isSubmitting}
         required
       >
         <option value="">Izaberite valutu</option>
@@ -233,7 +253,6 @@ Ukupna cena: ${data.ukupnaCena} ${data.valutaKod}
         ))}
       </select>
 
-      {/* PROMO */}
       <input
         placeholder="Promo kod (opciono)"
         className="w-full p-3 rounded-lg border"
@@ -241,17 +260,23 @@ Ukupna cena: ${data.ukupnaCena} ${data.valutaKod}
         onChange={(e) =>
           setForm({ ...form, promoKod: e.target.value })
         }
+        disabled={isSubmitting}
       />
 
       <button
         type="submit"
-        className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800"
+        disabled={isSubmitting}
+        className={`px-6 py-3 rounded-lg text-white ${
+          isSubmitting
+            ? "bg-gray-500 cursor-not-allowed"
+            : "bg-black hover:bg-gray-800"
+        }`}
       >
-        Pošalji rezervaciju
+        {isSubmitting ? "Obrada..." : "Pošalji rezervaciju"}
       </button>
 
       {message && (
-        <div className="bg-white p-4 rounded-lg shadow mt-4">
+        <div className="bg-white p-4 rounded-lg shadow mt-4 whitespace-pre-line">
           {message}
         </div>
       )}

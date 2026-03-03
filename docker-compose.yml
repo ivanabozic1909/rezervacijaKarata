@@ -13,6 +13,11 @@ services:
       - "5432:5432"
     volumes:
       - rezervacija_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rezervacija -d rezervacijadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -27,14 +32,17 @@ services:
     container_name: rezervacija-app
     restart: always
     depends_on:
-      - postgres
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
     environment:
       DATABASE_URL: postgres://rezervacija:rezervacija@postgres:5432/rezervacijadb
       RABBITMQ_URL: amqp://rabbitmq
     ports:
       - "3000:3000"
-    command: sh -c "npx drizzle-kit push && npm run dev"
+    command: sh -c "npx drizzle-kit push && npm start"
+
   worker:
     image: node:20
     container_name: rezervacija-worker
@@ -42,8 +50,12 @@ services:
     volumes:
       - .:/app
     depends_on:
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
     environment:
+      DATABASE_URL: postgres://rezervacija:rezervacija@postgres:5432/rezervacijadb
       RABBITMQ_URL: amqp://rabbitmq
     command: sh -c "npm install && npx ts-node --project tsconfig.worker.json worker.ts"
 

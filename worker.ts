@@ -19,6 +19,7 @@ function generatePromoKod() {
 }
 
 // 🔥 KONVERZIJA PREKO OPEN API
+// 🔥 KONVERZIJA PREKO OPEN API (ispravljena verzija)
 async function convertCurrency(
   amountRSD: number,
   targetCurrency: string
@@ -27,10 +28,16 @@ async function convertCurrency(
 
   try {
     const response = await fetch(
-      `https://api.exchangerate.host/latest?base=RSD&symbols=${targetCurrency}`
+      "https://open.er-api.com/v6/latest/RSD"
     );
 
+    if (!response.ok) {
+      console.log("❌ API nije dostupan, vraćam RSD cenu");
+      return amountRSD;
+    }
+
     const data = await response.json();
+
     const rate = data.rates?.[targetCurrency];
 
     if (!rate) {
@@ -38,9 +45,12 @@ async function convertCurrency(
       return amountRSD;
     }
 
+    console.log(`💱 Kurs RSD → ${targetCurrency}:`, rate);
+
     return amountRSD * rate;
+
   } catch (error) {
-    console.error("❌ Greška pri dohvatu kursa, vraćam RSD cenu");
+    console.error("❌ Greška pri dohvatu kursa:", error);
     return amountRSD;
   }
 }
@@ -65,24 +75,140 @@ async function startWorker() {
   console.log("🎧 Worker sluša queue...");
 
   channel.consume(QUEUE_NAME, async (msg) => {
-    if (!msg) return;
+  if (!msg) return;
 
-    try {
-      const data = JSON.parse(msg.content.toString());
+  try {
+    const data = JSON.parse(msg.content.toString());
 
-      if (data.event === "OTKAZANA_KARTA") {
-        console.log(`
+    console.log("📩 Primljen event:", data.event);
+
+    // =========================================
+    // ❌ OTKAZIVANJE
+    // =========================================
+    if (data.event === "TICKET_CANCELLED") {
+      console.log(`
 ------------------------------------
-❌ OBAVEŠTENJE O OTKAZIVANJU (Arhitektura C)
+❌ REZERVACIJA OTKAZANA
 Šifra: ${data.sifra}
 Email: ${data.email}
 Vreme: ${data.vreme}
 ------------------------------------
-        `);
-        channel.ack(msg);
-        return;
-      }
-      // KRAJ UBACIVANJA
+      `);
+
+      channel.ack(msg);
+      return;
+    }
+if (data.event === "TICKET_UPDATED") {
+
+  const {
+    rezervacijaId,
+    novaMesta,
+    sifra,
+    email
+  } = data;
+
+  console.log(`
+------------------------------------
+✏️ IZMENA REZERVACIJE
+Šifra: ${sifra}
+Nova mesta: ${novaMesta}
+Vreme: ${data.vreme}
+------------------------------------
+  `);
+
+  // 1️⃣ Provera zauzetosti
+  const vecRezervisana = await db.query.rezervisanaMesta.findMany({
+    where: inArray(rezervisanaMesta.mestoId, novaMesta),
+    with: { rezervacija: true },
+  });
+
+  const zauzeta = vecRezervisana.filter(
+    (r) =>
+      r.rezervacija.status === "AKTIVNA" &&
+      r.rezervacija.rezervacijaId !== rezervacijaId
+  );
+
+  if (zauzeta.length > 0) {
+    throw new Error("Neka mesta su već rezervisana.");
+  }
+
+  // 2️⃣ Ponovni obračun cene (u RSD)
+  const mestaPodaci = await db.query.mesta.findMany({
+    where: inArray(mesta.mestoId, novaMesta),
+    with: {
+      region: {
+        with: { ceneKarata: true },
+      },
+    },
+  });
+
+  let novaCena = 0;
+  const sada = new Date();
+
+  for (const m of mestaPodaci) {
+    const cena = Number(m.region.ceneKarata[0].iznos);
+    let tempCena = cena;
+
+    const datumPopusta =
+      m.region.ceneKarata[0].datumVazenjaPopusta;
+
+    if (datumPopusta && sada <= new Date(datumPopusta)) {
+      tempCena *= 0.9;
+    }
+
+    novaCena += tempCena;
+  }
+
+  // 🔹 UČITAJ REZERVACIJU DA VIDIMO VALUTU
+  const rezervacija = await db.query.rezervacije.findFirst({
+    where: eq(rezervacije.rezervacijaId, rezervacijaId),
+    with: { valuta: true },
+  });
+
+  let konacnaCena = novaCena;
+
+  // 🔹 AKO NIJE RSD → POZOVI EKSTERNI API
+  if (rezervacija?.valuta?.kod !== "RSD") {
+    konacnaCena = await convertCurrency(
+      novaCena,
+      rezervacija!.valuta!.kod
+    );
+  }
+
+  // 3️⃣ Update baze
+  await db.transaction(async (tx) => {
+
+    await tx
+      .delete(rezervisanaMesta)
+      .where(eq(rezervisanaMesta.rezervacijaId, rezervacijaId));
+
+    await tx.insert(rezervisanaMesta).values(
+      novaMesta.map((mestoId: number) => ({
+        rezervacijaId,
+        mestoId,
+      }))
+    );
+
+    await tx
+      .update(rezervacije)
+      .set({ ukupnaCena: konacnaCena.toFixed(2) })
+      .where(eq(rezervacije.rezervacijaId, rezervacijaId));
+  });
+
+  console.log(`
+------------------------------------
+✅ REZERVACIJA IZMENJENA
+Nova cena: ${konacnaCena.toFixed(2)} ${rezervacija?.valuta?.kod}
+------------------------------------
+  `);
+
+  channel.ack(msg);
+  return;
+}
+    // =========================================
+    // 🎟 KREIRANJE REZERVACIJE
+    // =========================================
+    if (data.event === "TICKET_CREATED") {
 
       const {
         koncertId,
@@ -100,10 +226,7 @@ Vreme: ${data.vreme}
 
       console.log("📦 Obrada rezervacije za:", ime, prezime);
 
-      // ==========================
       // 1️⃣ Provera zauzetosti
-      // ==========================
-
       const vecRezervisana = await db.query.rezervisanaMesta.findMany({
         where: inArray(rezervisanaMesta.mestoId, izabranaMesta),
         with: { rezervacija: true },
@@ -117,17 +240,12 @@ Vreme: ${data.vreme}
         throw new Error("Neka mesta su već rezervisana.");
       }
 
-      // ==========================
-      // 2️⃣ Računanje cene u RSD
-      // ==========================
-
+      // 2️⃣ Računanje cene
       const mestaPodaci = await db.query.mesta.findMany({
         where: inArray(mesta.mestoId, izabranaMesta),
         with: {
           region: {
-            with: {
-              ceneKarata: true,
-            },
+            with: { ceneKarata: true },
           },
         },
       });
@@ -143,27 +261,32 @@ Vreme: ${data.vreme}
           m.region.ceneKarata[0].datumVazenjaPopusta;
 
         if (datumPopusta && sada <= new Date(datumPopusta)) {
-          finalCena = finalCena * 0.9;
+          finalCena *= 0.9;
         }
 
         ukupnaCena += finalCena;
       }
 
-      // 5% promo popust
-      if (promoKod) {
-        const promo = await db.query.promoKodovi.findFirst({
-          where: eq(promoKodovi.kod, promoKod),
-        });
 
-        if (promo && promo.status === "AKTIVAN") {
-          ukupnaCena = ukupnaCena * 0.95;
-        }
-      }
+// Promo popust (ako je validan — primeni, ako nije — ignoriši)
+let promoZaUpdate: string | null = null;
 
-      // ==========================
-      // 3️⃣ KONVERZIJA VALUTE
-      // ==========================
+if (promoKod) {
+  const promo = await db.query.promoKodovi.findFirst({
+    where: eq(promoKodovi.kod, promoKod),
+  });
 
+  // Samo ako postoji i AKTIVAN je
+  if (promo && promo.status === "AKTIVAN") {
+    ukupnaCena *= 0.95;
+    promoZaUpdate = promo.kod;
+  }
+
+}
+
+ 
+
+      // 3️⃣ Konverzija
       const valuta = await db.query.valute.findFirst({
         where: eq(valute.valutaId, valutaId),
       });
@@ -171,16 +294,10 @@ Vreme: ${data.vreme}
       let finalCena = ukupnaCena;
 
       if (valuta && valuta.kod !== "RSD") {
-        finalCena = await convertCurrency(
-          ukupnaCena,
-          valuta.kod
-        );
+        finalCena = await convertCurrency(ukupnaCena, valuta.kod);
       }
 
-      // ==========================
       // 4️⃣ Kreiranje rezervacije
-      // ==========================
-
       const sifra = generateSifra();
 
       const [novaRezervacija] = await db
@@ -202,66 +319,53 @@ Vreme: ${data.vreme}
         })
         .returning();
 
-      // ==========================
-      // 5️⃣ Upis mesta
-      // ==========================
 
+      // 5️⃣ Upis mesta
       await db.insert(rezervisanaMesta).values(
         izabranaMesta.map((mestoId: number) => ({
           rezervacijaId: novaRezervacija.rezervacijaId,
           mestoId,
         }))
       );
+      // 6️⃣ Ako je promo korišćen — označi ga kao iskorišćen
+if (promoZaUpdate) {
+  await db
+    .update(promoKodovi)
+    .set({
+      status: "ISKORISCEN",
+      iskoriscenURezervacijiId: novaRezervacija.rezervacijaId,
+    })
+    .where(eq(promoKodovi.kod, promoZaUpdate));
+}
 
-      // ==========================
-      // 6️⃣ Update promo (ako korišćen)
-      // ==========================
+// ==========================
+// 6️⃣ Generisanje novog promo koda
+// ==========================
 
-      if (promoKod) {
-        const promo = await db.query.promoKodovi.findFirst({
-          where: eq(promoKodovi.kod, promoKod),
-        });
+const noviPromoKod = generatePromoKod();
 
-        if (promo && promo.status === "AKTIVAN") {
-          await db
-            .update(promoKodovi)
-            .set({
-              status: "ISKORISCEN",
-              iskoriscenURezervacijiId:
-                novaRezervacija.rezervacijaId,
-            })
-            .where(eq(promoKodovi.kod, promoKod));
-        }
-      }
-
-      // ==========================
-      // 7️⃣ Novi promo kod
-      // ==========================
-
-      const noviPromoKod = generatePromoKod();
-
-      await db.insert(promoKodovi).values({
-        kod: noviPromoKod,
-        status: "AKTIVAN",
-        kreiranIzRezervacijeId:
-          novaRezervacija.rezervacijaId,
-      });
-
+await db.insert(promoKodovi).values({
+  kod: noviPromoKod,
+  status: "AKTIVAN",
+  kreiranIzRezervacijeId: novaRezervacija.rezervacijaId,
+});
       console.log(`
 ------------------------------------
 🎟 Rezervacija uspešna!
 Šifra: ${sifra}
 Cena: ${finalCena.toFixed(2)} ${valuta?.kod}
-🎁 Promo kod: ${noviPromoKod}
+🎁 Novi promo kod: ${noviPromoKod}
 ------------------------------------
-`);
-
-      channel.ack(msg);
-    } catch (err) {
-      console.error("❌ Greška u obradi:", err);
-      channel.nack(msg, false, false);
+      `);
     }
-  });
+
+    channel.ack(msg);
+
+  } catch (err) {
+    console.error("❌ Greška u obradi:", err);
+    channel.nack(msg, false, false);
+  }
+});
 }
 
 startWorker().catch(console.error);

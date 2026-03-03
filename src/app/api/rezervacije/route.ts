@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { publishReservation } from "@/queue/publisher";
+import { publishEvent } from "@/queue/publisher";
 
 export async function POST(req: Request) {
   try {
@@ -26,14 +26,15 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!ime || !prezime || !email || !drzavaId || !valutaId) {
+    if (!ime || !prezime || !email || !drzavaId || !valutaId || !koncertId) {
       return NextResponse.json(
         { message: "Sva obavezna polja moraju biti popunjena." },
         { status: 400 }
       );
     }
 
-    await publishReservation({
+    await publishEvent( {
+      event: "TICKET_CREATED",
       koncertId: Number(koncertId),
       ime,
       prezime,
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
       valutaId: Number(valutaId),
       izabranaMesta,
       promoKod,
+      vreme: new Date().toISOString()
     });
 
     return NextResponse.json({
@@ -52,7 +54,8 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Greška:", error);
+
     return NextResponse.json(
       { message: "Greška pri slanju rezervacije." },
       { status: 500 }
