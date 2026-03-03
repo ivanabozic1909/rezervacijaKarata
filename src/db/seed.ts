@@ -1,4 +1,4 @@
-import "dotenv/config";
+/*import "dotenv/config";
 import { db } from "./index";
 
 import { drzave } from "./schema/drzava";
@@ -122,6 +122,53 @@ async function seed() {
     console.error("❌ Seed failed:", err);
   } finally {
     process.exit(0);
+  }
+}
+
+seed();*/ import { db } from "./index";
+import { drzave } from "./schema/drzava";
+import { valute } from "./schema/valuta";
+
+async function seed() {
+  try {
+    console.log("🌱 Pokrećem seed...");
+
+    // Očisti stare podatke (opciono)
+   /* await db.delete(drzave);
+    await db.delete(valute);*/
+
+    // =====================
+    // DRŽAVE
+    // =====================
+    await db.insert(drzave).values([
+      { naziv: "Srbija" },
+      { naziv: "Hrvatska" },
+      { naziv: "Bosna i Hercegovina" },
+      { naziv: "Crna Gora" },
+      { naziv: "Slovenija" },
+      { naziv: "Nemačka" },
+    ]);
+
+    console.log("✅ Države unete");
+
+    // =====================
+    // VALUTE
+    // =====================
+    await db.insert(valute).values([
+      { kod: "RSD", naziv: "Srpski dinar" },
+      { kod: "EUR", naziv: "Evro" },
+      { kod: "USD", naziv: "Američki dolar" },
+      { kod: "CHF", naziv: "Švajcarski franak" },
+    ]);
+
+    console.log("✅ Valute unete");
+
+    console.log("🎉 Seed uspešno završen");
+    process.exit(0);
+
+  } catch (error) {
+    console.error("❌ Greška u seed-u:", error);
+    process.exit(1);
   }
 }
 
