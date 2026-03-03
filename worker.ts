@@ -86,18 +86,61 @@ async function startWorker() {
     // ❌ OTKAZIVANJE
     // =========================================
     if (data.event === "TICKET_CANCELLED") {
-      console.log(`
+  const { sifra, email } = data;
+
+  console.log(`
 ------------------------------------
 ❌ REZERVACIJA OTKAZANA
-Šifra: ${data.sifra}
-Email: ${data.email}
-Vreme: ${data.vreme}
+Šifra: ${sifra}
+Email: ${email}
 ------------------------------------
-      `);
+  `);
 
-      channel.ack(msg);
-      return;
+  // 🔎 Pronađi rezervaciju
+  const rezervacija = await db.query.rezervacije.findFirst({
+    where: eq(rezervacije.sifra, sifra),
+  });
+
+  if (!rezervacija) {
+    console.log("⚠ Rezervacija nije pronađena.");
+    channel.ack(msg);
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+
+    // 1️⃣ Postavi status rezervacije na OTKAZANA
+    await tx
+      .update(rezervacije)
+      .set({ status: "OTKAZANA" })
+      .where(eq(rezervacije.rezervacijaId, rezervacija.rezervacijaId));
+
+    // 2️⃣ Oslobodi sva mesta
+    await tx
+      .delete(rezervisanaMesta)
+      .where(eq(rezervisanaMesta.rezervacijaId, rezervacija.rezervacijaId));
+
+    // 3️⃣ Pronađi promo kod koji je generisan iz ove rezervacije
+    const promo = await tx.query.promoKodovi.findFirst({
+      where: eq(
+        promoKodovi.kreiranIzRezervacijeId,
+        rezervacija.rezervacijaId
+      ),
+    });
+
+    if (promo) {
+      // 4️⃣ Postavi promo kod kao NEVAZECI
+      await tx
+        .update(promoKodovi)
+        .set({ status: "NEVAZECI" })
+        .where(eq(promoKodovi.promoKodId, promo.promoKodId));
     }
+  });
+
+  channel.ack(msg);
+  return;
+}
+
 if (data.event === "TICKET_UPDATED") {
 
   const {
