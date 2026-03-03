@@ -33,7 +33,7 @@ export const koncertiRelations = relations(koncerti, ({ one, many }) => ({
     references: [lokacije.lokacijaId],
   }),
 
-  regioniSedenja: many(regionSedenja),
-   
+  ceneKarata: many(cenaKarte),  // 👈 DODAJ OVO
+
   rezervacije: many(rezervacije),
 })); 

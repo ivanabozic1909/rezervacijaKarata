@@ -14,19 +14,22 @@ export async function GET(
     const koncert = await db.query.koncerti.findFirst({
       where: eq(koncerti.koncertId, numericId),
       with: {
-        kategorija: true,
-        lokacija: true,
-        regioniSedenja: {
-          with: {
-            ceneKarata: true,
-            mesta: {
-              with: {
-                rezervacije: true, // 🔥 da znamo da li je zauzeto
-              },
+      kategorija: true,
+  lokacija: true,
+  ceneKarata: {
+    with: {
+      regionSedenja: {
+        with: {
+          mesta: {
+            with: {
+              rezervacije: true,
             },
           },
         },
       },
+    },
+  },
+},
     });
 
     if (!koncert) {

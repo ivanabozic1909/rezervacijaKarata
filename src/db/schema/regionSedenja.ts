@@ -13,8 +13,7 @@ export const regionSedenja = pgTable("region_sedenja", {
   // Kapacitet sada predstavlja broj mesta u tom regionu
   kapacitet: integer("kapacitet").notNull(),
 
-  koncertId: integer("koncert_id")
-    .references(() => koncerti.koncertId),
+
 
   lokacijaId: integer("lokacija_id")
     .references(() => lokacije.lokacijaId)
@@ -24,11 +23,7 @@ export const regionSedenja = pgTable("region_sedenja", {
 export const regionSedenjaRelations = relations(
   regionSedenja,
   ({ one, many }) => ({
-    koncert: one(koncerti, {
-      fields: [regionSedenja.koncertId],
-      references: [koncerti.koncertId],
-    }),
-
+   
     lokacija: one(lokacije, {
       fields: [regionSedenja.lokacijaId],
       references: [lokacije.lokacijaId],

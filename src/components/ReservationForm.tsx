@@ -40,34 +40,31 @@ export default function ReservationForm({
     );
   }
 
-  const procenaCene = useMemo(() => {
-    let total = 0;
-    const sada = new Date();
+ const procenaCene = useMemo(() => {
+  let total = 0;
+  const sada = new Date();
 
-    regioni.forEach((region: any) => {
-      const cenaObj = region.ceneKarata?.[0];
-      if (!cenaObj) return;
+  regioni.forEach((region: any) => {
+    let cena = Number(region.cena || 0);
+    const datumPopusta = region.datumVazenjaPopusta;
 
-      let cena = Number(cenaObj.iznos);
-      const datumPopusta = cenaObj.datumVazenjaPopusta;
-
-      if (datumPopusta && new Date(datumPopusta) >= sada) {
-        cena *= 0.9;
-      }
-
-      region.mesta.forEach((mesto: any) => {
-        if (selectedSeats.includes(mesto.mestoId)) {
-          total += cena;
-        }
-      });
-    });
-
-    if (promoStatus === "valid") {
-      total *= 0.95;
+    if (datumPopusta && new Date(datumPopusta) >= sada) {
+      cena *= 0.9;
     }
 
-    return total.toFixed(2);
-  }, [selectedSeats, regioni, promoStatus]);
+    region.mesta.forEach((mesto: any) => {
+      if (selectedSeats.includes(mesto.mestoId)) {
+        total += cena;
+      }
+    });
+  });
+
+  if (promoStatus === "valid") {
+    total *= 0.95;
+  }
+
+  return total.toFixed(2);
+}, [selectedSeats, regioni, promoStatus]);
 
   async function checkPromo() {
     if (!form.promoKod || reservationCompleted) return;
@@ -157,7 +154,7 @@ Ukupna cena: ${data.ukupnaCena} ${data.valutaKod}
             {region.naziv}
           </h3>
           {(() => {
-  const datum = region.ceneKarata?.[0]?.datumVazenjaPopusta;
+ const datum = region.datumVazenjaPopusta;
   if (!datum) return null;
 
   const sada = new Date();

@@ -4,6 +4,7 @@ import { rezervacije } from "@/db/schema/rezervacija";
 import { rezervisanaMesta } from "@/db/schema/rezervisanoMesto";
 import { regionSedenja } from "@/db/schema/regionSedenja";
 import { eq, and } from "drizzle-orm";
+import { cenaKarte } from "@/db/schema/cenaKarte";
 
 export async function POST(req: Request) {
   try {
@@ -38,8 +39,10 @@ export async function POST(req: Request) {
       ),
     });
 
-    const regioni = await db.query.regionSedenja.findMany({
-      where: eq(regionSedenja.koncertId, rez.koncertId),
+    const cene = await db.query.cenaKarte.findMany({
+  where: eq(cenaKarte.koncertId, rez.koncertId),
+  with: {
+    regionSedenja: {
       with: {
         mesta: {
           with: {
@@ -47,13 +50,19 @@ export async function POST(req: Request) {
           },
         },
       },
-    });
+    },
+  },
+});
 
+   
     return NextResponse.json({
-      rezervacijaId: rez.rezervacijaId,
-      mojaMesta: mojaMesta.map((m) => m.mestoId),
-      regioni,
-    });
+  rezervacijaId: rez.rezervacijaId,
+  mojaMesta: mojaMesta.map((m) => m.mestoId),
+  regioni: cene.map(c => ({
+    ...c.regionSedenja,
+    cena: c.iznos
+  })),
+});
 
   } catch (error: any) {
     return NextResponse.json(

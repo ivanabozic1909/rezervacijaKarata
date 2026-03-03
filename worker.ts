@@ -6,6 +6,7 @@ import { mesta } from "./src/db/schema/mesto";
 import { promoKodovi } from "./src/db/schema/promoKod";
 import { valute } from "./src/db/schema/valuta";
 import { eq, inArray } from "drizzle-orm";
+import { cenaKarte } from "./src/db/schema/cenaKarte";
 
 const QUEUE_NAME = "rezervacije";
 const RABBIT_URL = process.env.RABBITMQ_URL || "amqp://rabbitmq";
@@ -159,7 +160,17 @@ Vreme: ${data.vreme}
 ------------------------------------
   `);
 
-  // 1️⃣ Provera zauzetosti
+  // 🔥 1️⃣ UČITAJ REZERVACIJU ODMAH
+  const rezervacija = await db.query.rezervacije.findFirst({
+    where: eq(rezervacije.rezervacijaId, rezervacijaId),
+    with: { valuta: true },
+  });
+
+  if (!rezervacija) {
+    throw new Error("Rezervacija nije pronađena.");
+  }
+
+  // 2️⃣ Provera zauzetosti
   const vecRezervisana = await db.query.rezervisanaMesta.findMany({
     where: inArray(rezervisanaMesta.mestoId, novaMesta),
     with: { rezervacija: true },
@@ -175,50 +186,51 @@ Vreme: ${data.vreme}
     throw new Error("Neka mesta su već rezervisana.");
   }
 
-  // 2️⃣ Ponovni obračun cene (u RSD)
+  // 3️⃣ Ponovni obračun cene
   const mestaPodaci = await db.query.mesta.findMany({
     where: inArray(mesta.mestoId, novaMesta),
-    with: {
-      region: {
-        with: { ceneKarata: true },
-      },
-    },
+    with: { region: true },
   });
 
   let novaCena = 0;
   const sada = new Date();
 
   for (const m of mestaPodaci) {
-    const cena = Number(m.region.ceneKarata[0].iznos);
-    let tempCena = cena;
 
-    const datumPopusta =
-      m.region.ceneKarata[0].datumVazenjaPopusta;
+    const cenaObj = await db.query.cenaKarte.findFirst({
+      where: (c, { and, eq }) =>
+        and(
+          eq(c.koncertId, rezervacija.koncertId),
+          eq(c.regionSedenjaId, m.region.regionSedenjaId)
+        ),
+    });
 
-    if (datumPopusta && sada <= new Date(datumPopusta)) {
+    if (!cenaObj) {
+      throw new Error("Cena nije pronađena.");
+    }
+
+    let tempCena = Number(cenaObj.iznos);
+
+    if (
+      cenaObj.datumVazenjaPopusta &&
+      sada <= new Date(cenaObj.datumVazenjaPopusta)
+    ) {
       tempCena *= 0.9;
     }
 
     novaCena += tempCena;
   }
 
-  // 🔹 UČITAJ REZERVACIJU DA VIDIMO VALUTU
-  const rezervacija = await db.query.rezervacije.findFirst({
-    where: eq(rezervacije.rezervacijaId, rezervacijaId),
-    with: { valuta: true },
-  });
-
   let konacnaCena = novaCena;
 
-  // 🔹 AKO NIJE RSD → POZOVI EKSTERNI API
-  if (rezervacija?.valuta?.kod !== "RSD") {
+  if (rezervacija.valuta?.kod !== "RSD") {
     konacnaCena = await convertCurrency(
       novaCena,
-      rezervacija!.valuta!.kod
+      rezervacija.valuta.kod
     );
   }
 
-  // 3️⃣ Update baze
+  // 4️⃣ Update baze
   await db.transaction(async (tx) => {
 
     await tx
@@ -241,7 +253,7 @@ Vreme: ${data.vreme}
   console.log(`
 ------------------------------------
 ✅ REZERVACIJA IZMENJENA
-Nova cena: ${konacnaCena.toFixed(2)} ${rezervacija?.valuta?.kod}
+Nova cena: ${konacnaCena.toFixed(2)} ${rezervacija.valuta?.kod}
 ------------------------------------
   `);
 
@@ -284,31 +296,39 @@ Nova cena: ${konacnaCena.toFixed(2)} ${rezervacija?.valuta?.kod}
       }
 
       // 2️⃣ Računanje cene
-      const mestaPodaci = await db.query.mesta.findMany({
-        where: inArray(mesta.mestoId, izabranaMesta),
-        with: {
-          region: {
-            with: { ceneKarata: true },
-          },
-        },
-      });
+     const mestaPodaci = await db.query.mesta.findMany({
+  where: inArray(mesta.mestoId, izabranaMesta),
+  with: {
+    region: true,
+  },
+});
 
       let ukupnaCena = 0;
       const sada = new Date();
 
       for (const m of mestaPodaci) {
-        const cena = Number(m.region.ceneKarata[0].iznos);
-        let finalCena = cena;
 
-        const datumPopusta =
-          m.region.ceneKarata[0].datumVazenjaPopusta;
+  const cenaObj = await db.query.cenaKarte.findFirst({
+    where: (c, { and, eq }) =>
+      and(
+        eq(c.koncertId, koncertId),
+        eq(c.regionSedenjaId, m.region.regionSedenjaId)
+      ),
+  });
 
-        if (datumPopusta && sada <= new Date(datumPopusta)) {
-          finalCena *= 0.9;
-        }
+  if (!cenaObj) {
+    throw new Error("Cena nije pronađena.");
+  }
 
-        ukupnaCena += finalCena;
-      }
+  let finalCena = Number(cenaObj.iznos);
+  const datumPopusta = cenaObj.datumVazenjaPopusta;
+
+  if (datumPopusta && sada <= new Date(datumPopusta)) {
+    finalCena *= 0.9;
+  }
+
+  ukupnaCena += finalCena;
+}
 
 
 // Promo popust (ako je validan — primeni, ako nije — ignoriši)

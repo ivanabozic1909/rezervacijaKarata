@@ -80,32 +80,35 @@ export default async function KoncertDetalj({
       </h2>
 
       <div className="grid md:grid-cols-2 gap-6 mb-16">
-        {koncert.regioniSedenja.map((region: any) => (
-          <div
-            key={region.regionSedenjaId}
-            className="border p-6 rounded-xl"
-          >
-            <h3 className="font-bold text-lg mb-2">
-              {region.naziv}
-            </h3>
+  {koncert.ceneKarata.map((cena: any) => (
+    <div
+      key={cena.regionSedenja.regionSedenjaId}
+      className="border p-6 rounded-xl"
+    >
+      <h3 className="font-bold text-lg mb-2">
+        {cena.regionSedenja.naziv}
+      </h3>
 
-            <p className="text-gray-500 mb-2">
-              Kapacitet: {region.kapacitet}
-            </p>
+      <p className="text-gray-500 mb-2">
+        Kapacitet: {cena.regionSedenja.kapacitet}
+      </p>
 
-            <p className="text-green-600 font-semibold">
-              Cena: {region.ceneKarata?.[0]?.iznos} RSD
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <ReservationForm
-        koncertId={koncert.koncertId}
-        regioni={koncert.regioniSedenja}
-        valute={valute}
-        drzave={drzave}
-      />
+      <p className="text-green-600 font-semibold">
+        Cena: {cena.iznos} RSD
+      </p>
+    </div>
+  ))}
+</div>
+<ReservationForm
+  koncertId={koncert.koncertId}
+  regioni={koncert.ceneKarata.map((c: any) => ({
+    ...c.regionSedenja,
+    cena: c.iznos,
+    datumVazenjaPopusta: c.datumVazenjaPopusta, // 👈 OVO
+  }))}
+  valute={valute}
+  drzave={drzave}
+/>
     </div>
   );
 }
