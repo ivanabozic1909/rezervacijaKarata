@@ -1,17 +1,32 @@
 import { db } from "@/db";
 import Hero from "@/components/Hero";
 import ConcertGrid from "@/components/ConcertGrid";
+import { redis } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   try {
-    const data = await db.query.koncerti.findMany({
+   const cacheKey = "svi_koncerti";
+
+  let data;
+
+  const cached = await redis.get(cacheKey);
+
+  if (cached) {
+    console.log("⚡ CACHE");
+    data = JSON.parse(cached);
+  } else {
+    console.log("📦 BAZA");
+
+    data = await db.query.koncerti.findMany({
       with: {
         kategorija: true,
         lokacija: true,
       },
     });
+
+    await redis.set(cacheKey, JSON.stringify(data), { EX: 60 });}
 
     // 🔥 Grupisanje po kategoriji
     const grupisani = data.reduce((acc: any, koncert: any) => {

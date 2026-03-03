@@ -26,6 +26,12 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+  redis:
+    image: redis:7
+    container_name: rezervacija-redis
+    ports:
+    - "6379:6379"
+    restart: always    
 
   app:
     build: .

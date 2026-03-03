@@ -4,6 +4,7 @@ import { koncerti } from "@/db/schema/koncert";
 import { regionSedenja } from "@/db/schema/regionSedenja";
 import { cenaKarte } from "@/db/schema/cenaKarte";
 import { eq } from "drizzle-orm";
+import { redis } from "@/lib/redis";
 
 type RegionInput = {
   naziv: string;
@@ -61,8 +62,9 @@ for (const region of regioniLokacije) {
     koncertId: noviKoncert.koncertId,
     regionSedenjaId: region.regionSedenjaId,
   });
+  
 }
-
+await redis.del("svi_koncerti");
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
