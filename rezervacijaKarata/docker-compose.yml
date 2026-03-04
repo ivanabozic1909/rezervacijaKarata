@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: rezervacija-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: rezervacija
+      POSTGRES_PASSWORD: rezervacija
+      POSTGRES_DB: rezervacijadb
+    ports:
+      - "5432:5432"
+    volumes:
+      - rezervacija_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rezervacija -d rezervacijadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rezervacija-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  app:
+    build: .
+    container_name: rezervacija-app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://rezervacija:rezervacija@postgres:5432/rezervacijadb
+      RABBITMQ_URL: amqp://rabbitmq
+    ports:
+      - "3000:3000"
+    command: sh -c "npx drizzle-kit push && npm start"
+
+  worker:
+    image: node:20
+    container_name: rezervacija-worker
+    working_dir: /app
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://rezervacija:rezervacija@postgres:5432/rezervacijadb
+      RABBITMQ_URL: amqp://rabbitmq
+    command: sh -c "npm install && npx ts-node --project tsconfig.worker.json worker.ts"
+
+volumes:
+  rezervacija_pgdata:
